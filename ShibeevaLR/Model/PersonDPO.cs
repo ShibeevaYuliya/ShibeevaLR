@@ -43,8 +43,8 @@ namespace ShibeevaLR.Model
                 OnPropertyChanged("LastName");
             }
         }
-        private DateTime birthday;
-        public DateTime Birthday
+        private string birthday;
+        public string Birthday
         {
             get { return birthday; }
             set
@@ -61,7 +61,7 @@ namespace ShibeevaLR.Model
             string roleName,
             string firstName,
             string lastName,
-            DateTime birthday)
+            string birthday)
         {
             this.Id = id; this.RoleName = roleName;
             this.FirstName = firstName; this.LastName = lastName; this.Birthday = birthday;
@@ -98,6 +98,14 @@ namespace ShibeevaLR.Model
                 perDpo.Birthday = person.Birthday;
             }
             return perDpo;
+        }
+        public static string GetStringBirthday(string birthday)
+        {
+            if (string.IsNullOrWhiteSpace(birthday))
+                return DateTime.Now.ToString("dd.MM.yyyy");
+            if (DateTime.TryParse(birthday, out DateTime parsedDate))
+                return parsedDate.ToString("dd.MM.yyyy");
+            return birthday;
         }
         public event PropertyChangedEventHandler PropertyChanged;
         [NotifyPropertyChangedInvocator]

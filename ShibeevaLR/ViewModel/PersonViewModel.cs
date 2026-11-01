@@ -1,21 +1,54 @@
 ﻿using JetBrains.Annotations;
+using Newtonsoft.Json;
+using ShibeevaLR.Helper;
+using ShibeevaLR.Model;
+using ShibeevaLR.View;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using ShibeevaLR.Helper;
-using ShibeevaLR.Model;
-using ShibeevaLR.View;
 
 namespace ShibeevaLR.ViewModel
 {
     public class PersonViewModel : INotifyPropertyChanged
     {
+        readonly string path = @"C:\Users\Krossovok\source\repos\ShibeevaLR\ShibeevaLR\DataModels\PersonData.json";
+        string _jsonPersons = String.Empty; 
+        public string Error { get; set; }
+        public ObservableCollection<Person> LoadPerson()
+        {
+            _jsonPersons = File.ReadAllText(path); if (_jsonPersons != null)
+            {
+                ListPerson = JsonConvert.DeserializeObject<ObservableCollection<Person>>(_jsonPersons);
+                return ListPerson;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        private void SaveChanges(ObservableCollection<Person> listPersons)
+        {
+            var jsonPerson = JsonConvert.SerializeObject(listPersons); try
+            {
+                using (StreamWriter writer = File.CreateText(path))
+                {
+                    writer.Write(jsonPerson);
+                }
+            }
+            catch (IOException e)
+            {
+                Error = "Ошибка записи json файла /n" + e.Message;
+            }
+        }
+
+
         private PersonDpo selectedPersonDpo;
         /// <summary>
         /// выделенные в списке данные по сотруднику
@@ -36,40 +69,12 @@ namespace ShibeevaLR.ViewModel
         public ObservableCollection<PersonDpo> ListPersonDpo { get; set; } = new ObservableCollection<PersonDpo>();
         public PersonViewModel()
         {
-            this.ListPerson.Add(new Person
-            {
-                Id = 1,
-                RoleId = 1,
-                FirstName = "Иван",
-                LastName = "Иванов",
-                Birthday = new DateTime(1980, 02, 28)
-            });
-            this.ListPerson.Add(new Person
-            {
-                Id = 2,
-                RoleId = 2,
-                FirstName = "Петр",
-                LastName = "Петров",
-                Birthday = new DateTime(1981, 03, 20)
-            });
-            this.ListPerson.Add(new Person
-            {
-                Id = 3,
-                RoleId = 3,
-                FirstName = "Виктор",
-                LastName = "Викторов",
-                Birthday = new DateTime(1982, 04, 15)
-            });
-            this.ListPerson.Add(new Person
-            {
-                Id = 4,
-                RoleId = 3,
-                FirstName = "Сидор",
-                LastName = "Сидоров",
-                Birthday = new DateTime(1983, 05, 10)
-            });
+            ListPerson = new ObservableCollection<Person>();
+            ListPersonDpo = new ObservableCollection<PersonDpo>();
+            ListPerson = LoadPerson();
             ListPersonDpo = GetListPersonDpo();
         }
+
         public ObservableCollection<PersonDpo> GetListPersonDpo()
         {
             foreach (var person in ListPerson)
@@ -119,18 +124,30 @@ namespace ShibeevaLR.ViewModel
                     PersonDpo per = new PersonDpo
                     {
                         Id = maxIdPerson,
-                        Birthday = DateTime.Now
+                        Birthday = DateTime.Now.ToString(),
                     };
                     wnPerson.DataContext = new NewPersonViewModel(per, wnPerson);
                     if (wnPerson.ShowDialog() == true)
                     {
                         Role r = (Role)wnPerson.CbRole.SelectedValue;
                         per.RoleName = r.NameRole;
+                        per.Birthday = PersonDpo.GetStringBirthday(per.Birthday);
                         ListPersonDpo.Add(per);
                         // добавление нового сотрудника в коллекцию ListPerson<Person>
                         Person p = new Person();
                         p = p.CopyFromPersonDPO(per);
                         ListPerson.Add(p);
+                        try
+                        {
+                            // сохранение изменений в файле json
+                            SaveChanges(ListPerson);
+                        }
+                        catch (Exception e)
+                        {
+                            Error = "Ошибка добавления данных в json файл\n" +
+                            e.Message;
+                        }
+
                     }
                 },
                 (obj) => true));
@@ -162,12 +179,13 @@ namespace ShibeevaLR.ViewModel
                         personDpo.RoleName = r.NameRole;
                         personDpo.FirstName = tempPerson.FirstName;
                         personDpo.LastName = tempPerson.LastName;
-                        personDpo.Birthday = tempPerson.Birthday;
-                        // перенос данных из класса отображения данных в класс Person
-                        FindPerson finder = new FindPerson(personDpo.Id);
-                        List<Person> listPerson = ListPerson.ToList(); Person p = listPerson.Find(new Predicate<Person>(finder.PersonPredicate));
+                        personDpo.Birthday = PersonDpo.GetStringBirthday(tempPerson.Birthday);
+                        Person p = ListPerson.FirstOrDefault(x => x.Id == personDpo.Id);
                         p = p.CopyFromPersonDPO(personDpo);
-                    }
+                        SaveChanges(ListPerson);
+                    
+
+                }
                 }, (obj) => SelectedPersonDpo != null && ListPersonDpo.Count > 0));
             }
         }
@@ -186,14 +204,29 @@ namespace ShibeevaLR.ViewModel
                     "Предупреждение", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
                     if (result == MessageBoxResult.OK)
                     {
-                        // удаление данных в списке отображения данных
-                        ListPersonDpo.Remove(person);
-                        // удаление данных в списке классов ListPerson<Person>
-                        Person per = new Person();
-                        per = per.CopyFromPersonDPO(person);
-                        ListPerson.Remove(per);
+                        {
+                            try
+                            {
+                                // удаление данных в списке отображения данных
+                                ListPersonDpo.Remove(person);
+                                // поиск удаляемого класса в коллекции ListRoles
+                                var per = ListPerson.FirstOrDefault(p => p.Id == person.Id);
+
+                                if (per != null)
+                                {
+                                    ListPerson.Remove(per);
+                                    // сохраненее данных в файле json
+                                    SaveChanges(ListPerson);
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                Error = "Ошибка удаления данных\n" + e.Message;
+                            }
+
+                        }
                     }
-                }, (obj) => SelectedPersonDpo != null && ListPersonDpo.Count > 0));
+                    }, (obj) => SelectedPersonDpo != null && ListPersonDpo.Count > 0));
             }
         }
         public event PropertyChangedEventHandler PropertyChanged;

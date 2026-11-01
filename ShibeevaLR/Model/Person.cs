@@ -13,9 +13,9 @@ namespace ShibeevaLR.Model
         public int RoleId { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public DateTime Birthday { get; set; }
+        public string Birthday { get; set; }
         public Person() { }
-        public Person(int id, int roleId, string firstName, string lastName, DateTime birthday)
+        public Person(int id, int roleId, string firstName, string lastName, string birthday)
         {
             this.Id = id; this.RoleId = roleId;
             this.FirstName = firstName; this.LastName = lastName; this.Birthday = birthday;
@@ -23,7 +23,6 @@ namespace ShibeevaLR.Model
 
         public Person CopyFromPersonDPO(PersonDpo personDpo)
         {
-            Person per = new Person();
             RoleViewModel vmRole = new RoleViewModel();
             int role = 0;
             foreach (var r in vmRole.ListRole)
@@ -36,13 +35,13 @@ namespace ShibeevaLR.Model
             }
             if (role != 0)
             {
-                per.Id = personDpo.Id;
-                per.RoleId = role;
-                per.FirstName = personDpo.FirstName;
-                per.LastName = personDpo.LastName;
-                per.Birthday = personDpo.Birthday;
+                this.Id = personDpo.Id;
+                this.RoleId = role;
+                this.FirstName = personDpo.FirstName;
+                this.LastName = personDpo.LastName;
+                this.Birthday = personDpo.Birthday;
             }
-            return per;
+            return this;
         }
 
     }

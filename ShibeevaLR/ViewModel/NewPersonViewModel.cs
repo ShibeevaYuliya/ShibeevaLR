@@ -25,8 +25,15 @@ namespace ShibeevaLR.ViewModel
             RoleName = perDpo.RoleName;
             FirstName = perDpo.FirstName;
             LastName = perDpo.LastName;
-            Birthday = perDpo.Birthday;
-            SaveCommand = new RelayCommand(Save);
+            if (DateTime.TryParse(perDpo.Birthday, out DateTime parsedDate))
+            {
+                Birthday = parsedDate.Date;
+            }
+            else
+            {
+                Birthday = DateTime.Now.Date;
+            }
+                SaveCommand = new RelayCommand(Save);
             CancelCommand = new RelayCommand(Cancel);
             RoleViewModel vmRole = new RoleViewModel();
             Data = vmRole.ListRole;
@@ -96,7 +103,7 @@ namespace ShibeevaLR.ViewModel
             perDpo.RoleName = SelectedRole.NameRole;
             perDpo.FirstName = FirstName;
             perDpo.LastName = LastName;
-            perDpo.Birthday = Birthday;
+            perDpo.Birthday = Birthday.ToString("dd.MM.yyyy");
 
 
 

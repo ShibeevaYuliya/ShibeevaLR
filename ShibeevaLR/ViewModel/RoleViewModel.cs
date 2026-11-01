@@ -11,12 +11,44 @@ using System.Windows;
 using ShibeevaLR.Helper;
 using ShibeevaLR.Model;
 using ShibeevaLR.View;
+using Newtonsoft.Json;
+using System.IO;
 //using ShibeevaLR.ViewModel;
 
 namespace ShibeevaLR.ViewModel
 {
     public class RoleViewModel : INotifyPropertyChanged
     {
+        readonly string path = @"C:\Users\Krossovok\source\repos\ShibeevaLR\ShibeevaLR\DataModels\RoleData.json";
+        string _jsonRoles = String.Empty; 
+        public string Error { get; set; }
+        public ObservableCollection<Role> LoadRole()
+        {
+            _jsonRoles = File.ReadAllText(path); if (_jsonRoles != null)
+            {
+                ListRole = JsonConvert.DeserializeObject<ObservableCollection<Role>>(_jsonRoles);
+                return ListRole;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        private void SaveChanges(ObservableCollection<Role> listRole)
+        {
+            var jsonRole = JsonConvert.SerializeObject(listRole); try
+            {
+                using (StreamWriter writer = File.CreateText(path))
+                {
+                    writer.Write(jsonRole);
+                }
+            }
+            catch (IOException e)
+            {
+                Error = "Ошибка записи json файла /n" + e.Message;
+            }
+        }
+
         private Role selectedRole;
         public Role SelectedRole
         {
@@ -32,23 +64,9 @@ namespace ShibeevaLR.ViewModel
         public ObservableCollection<Role> ListRole { get; set; } = new ObservableCollection<Role>();
         public RoleViewModel()
         {
-            this.ListRole.Add(new Role
-            {
-                Id = 1,
-                NameRole = "Директор"
-            });
-            this.ListRole.Add(new Role
-            {
-                Id = 2,
-                NameRole = "Бухгалтер"
-            });
-            this.ListRole.Add(new Role
-            {
-                Id = 3,
-                NameRole = "Менеджер"
-
-            });
+            ListRole = LoadRole();
         }
+
         public int MaxId()
         {
             int max = 0;
@@ -87,6 +105,7 @@ namespace ShibeevaLR.ViewModel
                     if (wnRole.ShowDialog() == true)
                     {
                         ListRole.Add(role);
+                        SaveChanges(ListRole);
                     }
                     SelectedRole = role;
                 }));
@@ -110,6 +129,7 @@ namespace ShibeevaLR.ViewModel
                     {
                         // сохранение данных в оперативной памяти
                         role.NameRole = tempRole.NameRole;
+                        SaveChanges(ListRole);
                     }
                 }, (obj) => SelectedRole != null && ListRole.Count > 0));
             }
@@ -127,6 +147,7 @@ namespace ShibeevaLR.ViewModel
                     if (result == MessageBoxResult.OK)
                     {
                         ListRole.Remove(role);
+                        SaveChanges(ListRole);
                     }
                 }, (obj) => SelectedRole != null && ListRole.Count > 0));
             }
